@@ -12,7 +12,7 @@ from ..common.exceptions import ELFRelocationError
 from ..common.utils import elf_assert, struct_parse
 from .sections import Section
 from .enums import (
-    ENUM_RELOC_TYPE_i386, ENUM_RELOC_TYPE_x64, ENUM_RELOC_TYPE_MIPS)
+    ENUM_RELOC_TYPE_i386, ENUM_RELOC_TYPE_x64, ENUM_RELOC_TYPE_MIPS, ENUM_RELOC_TYPE_AARCH64, ENUM_RELOC_TYPE_ARM)
 
 
 class Relocation(object):
@@ -151,6 +151,16 @@ class RelocationHandler(object):
                 raise ELFRelocationError(
                     'Unexpected RELA relocation for MIPS: %s' % reloc)
             recipe = self._RELOCATION_RECIPES_MIPS.get(reloc_type, None)
+        elif self.elffile.get_machine_arch() == 'ARM':
+            if reloc.is_RELA():
+               raise ELFRelocationError(
+                   'Unexpected RELA relocation for ARM: %s' % reloc)
+            recipe = self._RELOCATION_RECIPES_ARM.get(reloc_type, None)
+        elif self.elffile.get_machine_arch() == 'AArch64':
+            #if reloc.is_RELA():
+            #    raise ELFRelocationError(
+            #        'Unexpected RELA relocation for AArch64: %s' % reloc)
+            recipe = self._RELOCATION_RECIPES_AARCH64.get(reloc_type, None)
 
         if recipe is None:
             raise ELFRelocationError(
@@ -246,4 +256,40 @@ class RelocationHandler(object):
             bytesize=4, has_addend=True, calc_func=_reloc_calc_sym_plus_addend),
         ENUM_RELOC_TYPE_x64['R_X86_64_32S']: _RELOCATION_RECIPE_TYPE(
             bytesize=4, has_addend=True, calc_func=_reloc_calc_sym_plus_addend),
+    }
+
+    _RELOCATION_RECIPES_ARM = {
+        ENUM_RELOC_TYPE_ARM['R_ARM_NONE']: _RELOCATION_RECIPE_TYPE(
+            bytesize=4, has_addend=False, calc_func=_reloc_calc_identity),
+
+        ENUM_RELOC_TYPE_ARM['R_ARM_ABS32']: _RELOCATION_RECIPE_TYPE(
+            bytesize=4, has_addend=False, calc_func=_reloc_calc_sym_plus_value),
+
+        ENUM_RELOC_TYPE_ARM['R_ARM_REL32']: _RELOCATION_RECIPE_TYPE(
+            bytesize=4, has_addend=False, calc_func=_reloc_calc_sym_plus_value_pcrel),
+
+        ENUM_RELOC_TYPE_ARM['R_ARM_ABS16']: _RELOCATION_RECIPE_TYPE(
+            bytesize=2, has_addend=False, calc_func=_reloc_calc_sym_plus_value),
+
+        ENUM_RELOC_TYPE_ARM['R_ARM_ABS8']: _RELOCATION_RECIPE_TYPE(
+            bytesize=1, has_addend=False, calc_func=_reloc_calc_sym_plus_value),
+    }
+
+    _RELOCATION_RECIPES_AARCH64 = {
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_NONE']: _RELOCATION_RECIPE_TYPE(
+            bytesize=8, has_addend=False, calc_func=_reloc_calc_identity),
+
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_ABS64']: _RELOCATION_RECIPE_TYPE(
+            bytesize=8, has_addend=True, calc_func=_reloc_calc_sym_plus_addend),
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_ABS32']: _RELOCATION_RECIPE_TYPE(
+            bytesize=4, has_addend=True, calc_func=_reloc_calc_sym_plus_addend),
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_ABS16']: _RELOCATION_RECIPE_TYPE(
+            bytesize=2, has_addend=True, calc_func=_reloc_calc_sym_plus_addend),
+
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_PREL64']: _RELOCATION_RECIPE_TYPE(
+            bytesize=8, has_addend=True, calc_func=_reloc_calc_sym_plus_addend_pcrel),
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_PREL32']: _RELOCATION_RECIPE_TYPE(
+            bytesize=4, has_addend=True, calc_func=_reloc_calc_sym_plus_addend_pcrel),
+        ENUM_RELOC_TYPE_AARCH64['R_AARCH64_PREL16']: _RELOCATION_RECIPE_TYPE(
+            bytesize=2, has_addend=True, calc_func=_reloc_calc_sym_plus_addend_pcrel),
     }
